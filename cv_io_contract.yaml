@@ -1,0 +1,68 @@
+# CV I/O contract — Document 08 Part 1
+# Author: Serhii Polishchuk
+version: "0.1"
+
+latency_budget_ms: 100
+
+inputs:
+  image:
+    type: image_bgr8
+    frame: camera_optical
+  stamp_cam:
+    type: time
+    unit: ms
+  range:
+    optional: true
+    unit: m
+    frame: range_finder
+  stamp_range:
+    optional: true
+    unit: ms
+
+outputs:
+  tracks:
+    item:
+      track_id: int
+      cls: string          # Person | Car | Bicycle | ...
+      conf: float
+      bbox_xyxy: [x1, y1, x2, y2]  # full-frame pixels
+      frame: int
+      t: int               # ms
+  change_events:
+    item:
+      frame: int
+      t: int
+      change_score: float
+      area: int
+      bbox_xyxy: [x1, y1, x2, y2]
+      centroid: [cx, cy]
+      track_id:          # optional, via IoU with tracks
+        optional: true
+        type: int
+  quality:
+    latency_ms: float
+    n_tracks: int
+    n_events: int
+    drop_flag: bool
+  status: enum [ok, degraded, fail]
+
+time_policy:
+  master: stamp_cam
+  secondary: stamp_range
+  association: nearest
+  max_gap_ms: 50
+  interpolate_range: false
+  buffer_range_samples: 5
+  on_range_miss: continue_camera_only
+
+frames:
+  - map
+  - odom
+  - base_link
+  - camera_optical
+  - range_finder
+
+calibration_required:
+  - intrinsics_id
+  - extrinsics_id        # base_link -> camera_optical
+  - extrinsics_range_id  # optional
