@@ -1,0 +1,27 @@
+# DZ07 fixed mappings (do not change mid-experiment)
+seed: 42
+imgsz: 640
+conf: 0.25
+iou: 0.7
+
+# Evaluation: merge VisDrone predictions into HIT-UAV report classes
+eval_visdrone_to_hit:
+  0: Person      # pedestrian
+  1: Person      # people
+  2: Bicycle     # bicycle
+  3: Car         # car
+  # van/truck/bus/motor/... → excluded from 3-class metrics
+
+# Training labels: HIT category_id → YOLO class_id written in .txt
+# (must NOT write HIT Car=1 as YOLO 1 — that is people in VisDrone)
+train_hit_to_yolo:
+  0: 0   # Person → 0
+  1: 3   # Car → 3
+  2: 2   # Bicycle → 2
+  # 3 OtherVehicle, 4 DontCare → skip (not written)
+
+subset_n: 150
+epochs:
+  A: 15
+  B: 20
+  AB: 15
