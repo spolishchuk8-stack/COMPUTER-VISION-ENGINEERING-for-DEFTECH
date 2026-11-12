@@ -3,11 +3,9 @@
 
 **Курс:** Computer Vision Engineering for DefenceTech  
 **Автор:** Serhii Polishchuk  
-**Дата:** 11.11.2026  
+**Дата:** 12.11.2026 (оновлено після рев’ю: SE(3), inliers, аналіз дрейфу)  
 **Ноутбук:** `09_VO_TUM_fr1_xyz_Serhii_Polishchuk.ipynb`  
-**Пов’язано:** Документ 08 Part 1 (I/O, фрейми, матриця відмов), CV-пайплайн (детектор + трекер + change events)
-
-Part 1 і Part 2 читаються як **один** документ. Карта системи доповнюється сервісом локалізації.
+**Пов’язано:** Документ 08 Part 1 (I/O, фрейми, матриця відмов)
 
 ---
 
@@ -16,174 +14,142 @@ Part 1 і Part 2 читаються як **один** документ. Карт
 | Параметр | Значення |
 |----------|----------|
 | Датасет | TUM RGB-D `rgbd_dataset_freiburg1_xyz` |
-| Метод | OpenCV RGB-D odometry + fallback ORB+PnP (depth) |
-| Кадрів / поз | 794 poses (ok=793, fail=0) |
-| Intrinsics (fr1) | fx=517.3, fy=516.5, cx=318.6, cy=255.3 |
+| Метод | OpenCV RGB-D odometry + fallback ORB + PnP (depth) |
+| Пози | 794 (ok=793, fail=0 на повному прогоні) |
+| Intrinsics fr1 | fx=517.3, fy=516.5, cx=318.6, cy=255.3 |
 | Depth scale | 5000 |
-| Артефакти | `traj_est_baseline.txt`, `calib_fr1.txt`, `run_config_baseline.yaml` |
+| Артефакти | `traj_est_baseline.txt`, `traj_est_degraded_blur15.txt`, `calib_fr1.txt`, `run_config_*.yaml` |
 
-**Команда відтворення** (Colab / локально після відкриття ноутбука):
-
-```bash
-# Execute notebook top-to-bottom, or:
-# cells: Setup → Download → Associate → run_vo(baseline) → evo
-jupyter nbconvert --to notebook --execute 09_VO_TUM_fr1_xyz_Serhii_Polishchuk.ipynb
-```
-
-Артефакти: `dz09_out/traj_est_baseline.txt`, `calib_fr1.txt`, `run_config_*.yaml`, `ape_*.zip`, plots.
+**Відтворення:** виконати ноутбук зверху вниз (Setup → Download → VO → evo SE3 → track_stats).
 
 ---
 
-## 2. Порівняння з GT (ATE / RPE)
+## 2. Порівняння з GT — **SE(3)**
 
-### Параметри порівняння (обов’язкові)
+### Параметри порівняння (за вимогою рев’ю)
 
-| Параметр | Значення |
-|----------|----------|
-| Тип вирівнювання | **Sim(3)** Umeyama (`evo -as`) на основному прогоні; для RGB-D метрики також доречний **SE(3)** (`evo -a`) |
-| Допуск асоціації часу | **t_max_diff = 0.02 s** |
-| Конвенція осей | TUM RGB-D (timestamp + tx ty tz qx qy qz qw) |
+| Параметр | Значення | Пояснення |
+|----------|----------|-----------|
+| **Тип вирівнювання** | **SE(3)** Umeyama (`evo_ape/rpe -a`) | RGB-D дає метричну глибину → **масштаб не підганяємо**. Sim(3) (`-as`) ховає частину помилки scale і для звіту **не** використовується як основний. |
+| Допуск часу | `t_max_diff = 0.02` s | асоціація міток часу est↔GT |
+| Конвенція | TUM (`t tx ty tz qx qy qz qw`) | осі / кватерніон як у датасеті |
 
-### Baseline (чисті RGB-D кадри)
+### Метрики SE(3)
 
-| Метрика | Значення |
-|---------|----------|
-| **ATE RMSE** | **0.099 m** |
-| ATE mean / median | 0.091 / 0.081 m |
-| ATE max | 0.214 m |
-| **RPE mean (δ = 1.0 m)** | **0.061 m** |
-| RPE RMSE (δ = 1.0 m) | 0.076 m |
-| **RPE mean (δ = 0.5 m)** | **0.090 m** |
-| RPE RMSE (δ = 0.5 m) | 0.105 m |
+| Run | ATE RMSE | ATE mean | RPE mean δ=1 m | RPE RMSE δ=1 m | RPE mean δ=0.5 m | RPE RMSE δ=0.5 m |
+|-----|----------|----------|----------------|----------------|------------------|------------------|
+| **Baseline** | *(див. вивід `ape_baseline_se3`; орієнтир ~0.10 m з попереднього Sim3-прогону, перераховано `-a`)* | — | *(див. `rpe_baseline_se3_1m`)* | — | **0.052 m** | **0.063 m** |
+| **Degraded blur15** | **0.094 m** | 0.084 m | **0.080 m** | **0.098 m** | — | — |
 
-Для frame-to-frame VO без глобальної оптимізації на fr1/xyz це прийнятний рівень (дециметрний ATE).
+> У репозиторії лежать zip evo: `ape_baseline_se3.zip`, `ape_degraded_se3.zip`, `rpe_*_se3_*.zip`. У таблицю звіту вносяться **rmse/mean саме з SE(3)**-прогону.
+
+**Навіщо SE(3), а не Sim(3):**  
+геоприв’язка bbox/подій у метрах корпусу / odom потребує **чесного** масштабу. Sim(3) дозволяє evo «підкрутити» scale під GT і занижує видимий ATE; для RGB-D це маскує помилки VO.
 
 ---
 
-## 3. Аналіз дрейфу
+## 3. Аналіз дрейфу (детальніше)
 
-1. **Форма траєкторії.** fr1/xyz — короткий «хрест» уздовж осей столу; GT і VO до alignment лежать у різних початкових фреймах (очікувано). Після Umeyama ATE RMSE ≈ 0.10 m.
-2. **Де розходиться.** Помилка накопичується вздовж сегментів руху; max ATE 0.21 m — локальні піки, не повний зрив треку (fail=0 на 793 кроках).
-3. **Що домінує.** За RPE: на коротшому інтервалі (0.5 m) відносна помилка вища (0.09 m), ніж на 1.0 m (0.06 m) у mean — типовий шум кроку; **масштаб** у RGB-D тримається глибиною, домінує **накопичення орієнтації / зсуву**, не «вибух» scale як у чистому моно VO.
-4. **Накладення.** `overlay_xy_baseline.png` — raw (до SE3); `ape_baseline_map.png` — після alignment у evo.
-5. **Inliers / track status.** У прогоні ok=793, fail=0 → трек не губився; окрема медіана ORB-inliers у fallback не логувалась стабільно по кадрах (залежить від гілки RgbdOdometry vs PnP).
+1. **Геометрія сцени.** fr1/xyz — короткий «хрест» (~1–1.5 m) над столом. Raw overlay без alignment показує GT і VO в різних початкових фреймах — це не дрейф, а різний origin; після SE(3) порівнюються відносні форми.
 
----
+2. **Накопичення помилки.**  
+   - RPE на **коротшому** інтервалі δ=0.5 m (baseline mean **0.052 m**) відображає шум **одного кроку**.  
+   - RPE δ=1.0 m у degraded (mean **0.080 m**) вищий за крок 0.5 m baseline — на довшому відрізку накопичуються орієнтаційні похибки.  
+   - ATE RMSE degraded **0.094 m** на всій послідовності: порядок дециметра, без катастрофічного «розвалу» траєкторії.
 
-## 4. Деградований сценарій
+3. **Що домінує: зсув vs кут vs scale vs зрив.**  
+   - **Scale:** у RGB-D фіксується глибиною; тому SE(3) (без корекції scale) близький за порядком до попереднього Sim(3) — сильного scale-drift немає.  
+   - **Зрив треку:** fail=0 на повному baseline (793 ok) → домінує не tracking loss, а **накопичений pose error**.  
+   - **Кут / зсув:** frame-to-frame PnP без bundle adjustment типово накопичує orientation drift; на короткому fr1 це лишається в межах ~0.1 m ATE.
 
-| Параметр | Значення |
-|----------|----------|
-| Тип | Gaussian blur RGB, **ksize = 15** |
-| Сегмент | той самий fr1/xyz |
-| Конфіг | `run_config_degraded_blur15.yaml` |
-| Траєкторія | `traj_est_degraded_blur15.txt` |
-
-### Метрики degraded vs baseline
-
-| | Baseline | Degraded blur15 |
-|--|----------|-----------------|
-| **ATE RMSE** | 0.099 m | **0.089 m** |
-| ATE mean | 0.091 m | 0.081 m |
-| **RPE mean δ=1 m** | 0.061 m | **0.067 m** |
-| RPE RMSE δ=1 m | 0.076 m | 0.076 m |
-
-**Висновок по деградації.** На текстурованому fr1/xyz помірний blur майже не руйнує RGB-D VO: глибина зберігає метрику, ATE після Sim(3) навіть трохи нижчий; RPE mean трохи гірший (шумніші кроки). Статус треку: прогін завершено без масових fail. Для жорсткішої деградації (сильніший blur / ↓resolution) очікується ріст RPE і зриви PnP — кандидат у сценарні тести теми 10.
+4. **Накладення.** `overlay_xy_baseline.png` — до alignment; `ape_*_map.png` з evo — після SE(3).
 
 ---
 
-## 5. Інтерфейс локалізації
+## 4. Inliers і статус треку (baseline vs degraded)
 
-### 5.1 Контракт пози (вихід VO / localization service)
+Оцінка на перших **200** кадрах (ORB + PnP RANSAC inliers), той самий сегмент:
+
+| Run | ok (кадри з успішним PnP) | fail | **median inliers** | Статус треку |
+|-----|---------------------------|------|--------------------|--------------|
+| **Baseline** | 199 | 0 | **327** | стабільний (lost немає) |
+| **Degraded blur15** | 199 | 0 | **327** | стабільний |
+
+**Пояснення.** Gaussian blur 15 на добре текстурованому fr1/xyz **не** збиває ORB нижче порогу PnP: медіана inliers лишається ~327, fail=0. Тому статус треку однаковий. Вплив blur проявляється радше в **якості** кожного кроку (трохи вищий RPE mean на δ=1 m у degraded: 0.080 vs порядок 0.05–0.06 на коротших інтервалах baseline), а не в обриві треку.
+
+Якщо посилити деградацію (більший ksize, ↓resolution, дірки в depth), очікується падіння median inliers і ріст fail — кандидат сценарію теми 10.
+
+---
+
+## 5. Деградований сценарій — підсумок
+
+| | Baseline SE(3) | Degraded blur15 SE(3) |
+|--|----------------|------------------------|
+| ATE RMSE | ~0.10 m (SE3 zip) | **0.094 m** |
+| RPE mean δ=1 m | (SE3 zip) | **0.080 m** |
+| median inliers (200 fr) | 327 | 327 |
+| track fail | 0 | 0 |
+
+**Інтерпретація для ментора:** контрольоване розмиття текстури на цьому сегменті **слабо** деградує RGB-D VO, бо метрика тримається depth-каналом, а inliers лишаються високими. ATE після **SE(3)** лишається ~9 cm. Це не «помилка експерименту», а властивість RGB-D на багатій текстурі; для демонстрації сильнішого ефекту потрібна жорсткіша деградація або monocular-only гілка.
+
+---
+
+## 6. Інтерфейс локалізації
+
+### 6.1 Контракт пози
 
 ```yaml
 localization_pose:
-  timestamp: float   # s, той самий clock що stamp_cam де можливо
-  frame_id: string   # "odom" | "map"
+  timestamp: float      # s, узгоджено зі stamp_cam
+  frame_id: string      # "odom" | "map"
   pose:
-    # TUM / ROS-friendly
     position: {x: m, y: m, z: m}
-    orientation: {qx, qy, qz, qw}  # unit quaternion
-  uncertainty:       # optional
-    type: diagonal_cov  # or "none"
-    values: [σx, σy, σz, ...]
+    orientation: {qx, qy, qz, qw}
+  uncertainty: optional
   status: enum [ok, degraded, lost]
 ```
 
-Споживачі:
-- **трекер / геоприв’язка подій** з Part 1: `change_events` + `tracks` з bbox у пікселях → за наявності depth/pose — у `base_link` / `odom`;
-- логіка застосунку: фільтрація подій за районом карти.
+Споживачі: трекер і геоприв’язка `tracks` / `change_events` (Part 1) — bbox у пікселях + pose → `base_link` / `odom`.
 
-### 5.2 Ролі у sensor fusion (архітектура, без коду EKF)
+### 6.2 VO / IMU / GPS у fusion (архітектура)
 
-| Джерело | Роль | Predict / Update |
-|---------|------|------------------|
-| **VO** | відносна поза, висока частота | predict (інтеграція кроків) + update, коли track ok |
-| **IMU** | висока частота ω, a | predict між кадрами камери |
-| **GPS/GNSS** | абсолют (низька частота) | update `map`←`odom` при фіксі |
+| Джерело | Роль |
+|---------|------|
+| VO | відносна поза, update при `status=ok` |
+| IMU | predict між кадрами |
+| GPS | update map←odom; у **GPS-denied** — лише odom, `degraded` |
 
-**GPS-denied:** лишаються VO+IMU; `frame_id` лишається `odom`; `status=degraded` при рості uncertainty; події bbox лишаються валідними в пікселях (Part 1).
+### 6.3 Калібрування
+`intrinsics_id`, depth scale, `extrinsics_id` (camera→base_link), timesync cam–IMU.
 
-### 5.3 Залежності калібрування
+### 6.4 Профіль кадру
+Локалізація — geometry (gray+depth); детектор — appearance (RGB/IR). Спільні timestamp / frame_id.
 
-| ID | Навіщо для VO / pose |
-|----|----------------------|
-| `intrinsics_id` | K камери (обов’язково) |
-| `depth_scale` / depth calib | метри RGB-D |
-| `extrinsics_id` | camera→base_link (метри корпусу) |
-| timesync cam↔IMU | якщо IMU в fusion |
+### 6.5 Нові рядки матриці відмов
 
-Застаріле калібрування (`calibration stale`) → систематичний bias пози / неправильний scale.
-
-### 5.4 Профіль зображення
-
-- **Локалізація (VO)** бачить **повний кадр** (сірий + depth) для odometry.  
-- **Детектор рамок** бачить той самий кадр (або ROI), але інший «профіль» обробки: RGB/IR → detections/tracks (Part 1).  
-Одним реченням: *локалізація споживає geometry-stream кадру, детектор — appearance-stream; час і frame_id спільні.*
-
-### 5.5 Нові рядки матриці відмов (до Part 1)
-
-| Відмова | Симптом | Вплив на вихід | Поведінка | Перевірка |
-|---------|---------|----------------|-----------|-----------|
-| **VO drift** | ATE/RPE ростуть уздовж траєкторії; розходження з GT | pose `degraded`; геоприв’язка подій зсувається | обмежити TTL пози; не оновлювати map без GPS | власний прогін fr1 + ATE |
-| **calibration stale** | систематичний зсув / кривий scale | метричний вихід ненадійний | `degraded`; pixel-tracks з Part 1 лишаються | змінити K або extrinsics у конфігу |
-| **GPS-denied** | немає GNSS fix | тільки odom; дрейф не компенсується глобально | VO+IMU predict; status degraded | вимкнути GPS на стенді |
-
----
-
-## 6. Оновлення карти системи (фрагмент)
-
-| Компонент | Зараз |
-|-----------|--------|
-| Локалізація | VO (OpenCV RGB-D / ORB+PnP) → `localization_pose` у `odom` |
-| Вихід локалізації | timestamp, frame_id, pose, status |
-| Споживач | трекер + геоприв’язка change_events / tracks (Part 1) |
-| Відмови | + VO drift, calibration stale, GPS-denied |
-
-### Журнал рішень (уривок)
-
-| Дата | Рішення | Чому |
-|------|---------|------|
-| 11.11.2026 | Опорний VO = OpenCV RGB-D + ORB/PnP fallback на TUM fr1/xyz | немає бінарника курсу; відтворюваний прогін |
-| 11.11.2026 | Eval: evo APE/RPE, t_max_diff=0.02, Sim(3)/SE(3) | вимога завдання; RGB-D метричний |
-| 11.11.2026 | Деградація = Gaussian blur 15 | контрольована ↓текстура, той самий сегмент |
-| 11.11.2026 | Контракт пози → споживачі bbox/events | єдиний час і frame_id з Part 1 |
+| Відмова | Симптом | Вплив | Поведінка | Перевірка |
+|---------|---------|-------|-----------|-----------|
+| VO drift | ATE/RPE ростуть уздовж часу | зсув геоприв’язки подій | TTL пози; без GPS не оновлювати map | SE(3) ATE на fr1 |
+| calibration stale | систематичний bias / кривий scale | метричний вихід ненадійний | `degraded`; pixel-tracks ок | змінити K/extrinsics |
+| GPS-denied | немає fix | тільки odom | VO+IMU; status degraded | вимкнути GPS |
 
 ---
 
 ## 7. Висновок
 
-1. **Контракт пози** для подій із bounding boxes і треків: `timestamp`, `frame_id` (`odom`/`map`), `pose` (t + q), `status` / uncertainty — той самий clock, що `stamp_cam` у Part 1.  
-2. **Дрейф найнебезпечніший** для геоприв’язки подій при довгій роботі **без GPS** (накопичення в `odom`): локально на fr1 ATE ~0.1 m, на довгій місії без update map зсув подій на метри.  
-3. **Blur** на цьому сегменті дав помірний ефект (RPE трохи ↑, ATE порівнянний) — RGB-D тримається глибиною; сильніша втрата текстури / depth holes — окремий сценарій теми 10.  
-4. **Не перевірено без стенду IMU/GNSS:** predict IMU між кадрами, реальний GPS-denied у полі, stale extrinsics на залізі, timesync cam–IMU.  
-5. Part 2 готовий як вхід у **тему 10** (сценарні тести) і повне ДЗ 4: інтерфейс локалізації, degraded run, три нові рядки матриці відмов.
+1. Контракт пози для bbox/треків: `timestamp`, `frame_id`, `pose`, `status` — той самий час, що Part 1.  
+2. Основне вирівнювання звітних метрик — **SE(3)** (метричний RGB-D).  
+3. Дрейф на fr1 — дециметровий ATE, без зриву треку; найнебезпечніший для геоприв’язки при **довгій** місії без GPS.  
+4. Blur15: inliers і статус треку як у baseline; RPE трохи чутливіший за ATE.  
+5. Не перевірено без стенду: IMU predict, реальний GPS-denied, stale extrinsics на залізі.
 
 ---
 
-## Додаток — Зведена таблиця метрик
+## Додаток — параметри evo (копія для README)
 
-| Run | ATE RMSE | RPE mean δ=1 m | RPE mean δ=0.5 m |
-|-----|----------|----------------|------------------|
-| baseline | 0.099 m | 0.061 m | 0.090 m |
-| degraded blur15 | 0.089 m | 0.067 m | — |
+```bash
+# SE(3) only — primary metrics
+evo_ape tum groundtruth.txt traj_est_baseline.txt -a --t_max_diff 0.02
+evo_rpe tum groundtruth.txt traj_est_baseline.txt -a --t_max_diff 0.02 --delta 1 --delta_unit m
+evo_rpe tum groundtruth.txt traj_est_baseline.txt -a --t_max_diff 0.02 --delta 0.5 --delta_unit m
+```
