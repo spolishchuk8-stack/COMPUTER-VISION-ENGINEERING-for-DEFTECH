@@ -1,0 +1,14 @@
+scenario_id: S2
+name: noise_L3
+status: executed
+source_report: DZ05_Report_Serhii_Polishchuk.md
+order: [decode, degrade, preprocess]
+degrade: {type: gaussian_noise, std: 50}
+seed: 42
+weights: yolov8n.pt
+M0_mAP50-95: 0.0529
+Ms_mAP50-95: 0.0087
+rel_drop: 0.835
+rel_drop_pct: 83.5
+pass_fail: fail
+note: "largest relative drop among photometric degradations"

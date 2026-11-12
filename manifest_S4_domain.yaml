@@ -1,0 +1,13 @@
+scenario_id: S4
+name: RGB_to_IR_HIT_UAV
+status: executed
+source_report: 07_Domain_Shift_Note / DZ07 metrics_all.csv
+dataset: HIT-UAV val (290 images)
+weights_zero: yolov8n.pt
+weights_AB: AB_best.pt
+metrics:
+  zero_mAP50: 0.0007
+  A_mAP50: 0.0021
+  B_mAP50: 0.1048
+  AB_mAP50: 0.2267
+release_note: "IR zero-shot not promised; use A+B for IR trial"

@@ -1,0 +1,17 @@
+scenario_id: S1
+name: blur_L3
+status: executed
+source_report: DZ05_Report_Serhii_Polishchuk.md
+order: [decode, degrade, preprocess]
+degrade: {type: gaussian_blur, k: 15, sigma: 4}
+seed: 42
+weights: yolov8n.pt
+imgsz: 640
+conf: 0.25
+iou: 0.7
+M0_mAP50-95: 0.0529
+Ms_mAP50-95: 0.0298
+rel_drop: 0.437
+rel_drop_pct: 43.7
+policy_pass_max: 0.25
+pass_fail: fail

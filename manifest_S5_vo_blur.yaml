@@ -1,0 +1,34 @@
+scenario_id: S5
+name: VO_TUM_fr1_xyz_blur15
+status: executed
+source_report: 08_Part2_Localization_VO_Serhii_Polishchuk.md
+notebook: 09_VO_TUM_fr1_xyz_Serhii_Polishchuk.ipynb
+dataset: rgbd_dataset_freiburg1_xyz
+alignment: SE3
+t_max_diff_s: 0.02
+calib: {fx: 517.3, fy: 516.5, cx: 318.6, cy: 255.3, depth_scale: 5000}
+baseline:
+  poses: 794
+  ok: 793
+  fail: 0
+  ATE_RMSE_SE3_approx_m: 0.10
+  RPE_mean_delta_0.5m: 0.052
+  RPE_RMSE_delta_0.5m: 0.063
+  median_inliers_200fr: 327
+degraded_blur15:
+  blur_ksize: 15
+  ATE_RMSE_SE3_m: 0.094
+  ATE_mean_m: 0.084
+  RPE_mean_delta_1m: 0.080
+  RPE_RMSE_delta_1m: 0.098
+  median_inliers_200fr: 327
+  track_fail: 0
+artifacts_expected:
+  - traj_est_baseline.txt
+  - traj_est_degraded_blur15.txt
+  - calib_fr1.txt
+  - ape_baseline_se3.zip
+  - ape_degraded_se3.zip
+  - run_config_baseline.yaml
+  - run_config_degraded_blur15.yaml
+note: "If Colab dz09_out still available, copy binary zips/traj next to these manifests"
