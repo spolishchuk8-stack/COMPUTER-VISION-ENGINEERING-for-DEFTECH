@@ -1,0 +1,37 @@
+{
+  "device": "Tesla T4",
+  "imgsz": 640,
+  "batch": 1,
+  "warmup": 10,
+  "n_frames": 32,
+  "rows": [
+    {
+      "tag": "pytorch_ultralytics",
+      "n": 32,
+      "p50_ms": 10.165,
+      "p95_ms": 11.876,
+      "mean_ms": 10.316,
+      "fps_p50": 98.38,
+      "gpu_mem_MB": 29.2
+    },
+    {
+      "tag": "onnx_ultralytics_ort",
+      "n": 32,
+      "p50_ms": 151.76,
+      "p95_ms": 165.972,
+      "mean_ms": 144.302,
+      "fps_p50": 6.59,
+      "gpu_mem_MB": 12.7
+    },
+    {
+      "tag": "tensorrt_fp16",
+      "status": "not_built",
+      "reason": "No dedicated NVIDIA TRT build session in student Colab path; optional per assignment. Can be built on AWS g4dn / local RTX with NGC container.",
+      "p50_ms": null,
+      "p95_ms": null,
+      "fps_p50": null,
+      "gpu_mem_MB": null,
+      "engine_build_s": null
+    }
+  ]
+}

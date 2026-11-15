@@ -1,0 +1,15 @@
+{
+  "iou_match": 0.5,
+  "conf": 0.25,
+  "n_frames": 16,
+  "n_boxes_torch": 36,
+  "n_boxes_onnx": 40,
+  "n_matched": 36,
+  "match_rate_vs_torch": 1.0,
+  "score_abs_diff_median": 0.01432,
+  "score_abs_diff_p95": 0.16044,
+  "unmatched_torch": 0,
+  "unmatched_onnx": 4,
+  "unmatched_near_conf_threshold": 0,
+  "note": "Differences often appear near conf threshold or from NMS numeric order."
+}

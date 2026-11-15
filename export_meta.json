@@ -1,0 +1,8 @@
+{
+  "weights": "yolov8n.pt",
+  "imgsz": 640,
+  "opset": 12,
+  "dynamic": false,
+  "simplify": true,
+  "command": "YOLO('yolov8n.pt').export(format='onnx', imgsz=640, opset=12, simplify=True, dynamic=False)"
+}
