@@ -1,0 +1,15 @@
+# Theme 12 — stream fault injection on replay
+scenario: frame_drop
+# every N-th frame is dropped from the stream fed to detector
+drop_every: 5
+# alternative scenarios (not all executed):
+# frozen_frame: {start_frame: 20, hold_frames: 15}
+# resolution_change: {from_frame: 30, scale: 0.5}
+
+status_enum:
+  - ok
+  - frame_dropped
+  - frozen
+  - resolution_changed
+
+log_fields: [frame_idx, t, status, n_detections]

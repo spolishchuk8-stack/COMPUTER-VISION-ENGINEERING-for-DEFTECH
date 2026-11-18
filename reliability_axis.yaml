@@ -1,0 +1,20 @@
+# Theme 12 — one degradation axis (from DZ05 protocol)
+seed: 42
+metric: mAP50-95
+split: VisDrone2019-DET-val
+weights: yolov8n.pt
+imgsz: 640
+conf: 0.25
+iou: 0.7
+runtime: pytorch_ultralytics   # signed as package 09 recommendation for T4
+order: [decode, degrade, preprocess]
+
+axis: gaussian_noise
+levels:
+  L0: {std: 0,   Mk: 0.0529, note: "nominal M0"}
+  L1: {std: 10,  Mk: 0.0489}
+  L2: {std: 25,  Mk: 0.0364}
+  L3: {std: 50,  Mk: 0.0087}
+
+# Relative Mk/M0 computed from Mk above
+source_report: DZ05_Report_Serhii_Polishchuk.md

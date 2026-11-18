@@ -1,0 +1,17 @@
+frame_idx,t,status,n_detections,note
+0,0.00,ok,3,
+1,0.03,ok,2,
+2,0.07,ok,4,
+3,0.10,ok,3,
+4,0.13,frame_dropped,0,skip every 5th
+5,0.17,ok,3,
+6,0.20,ok,2,
+7,0.23,ok,4,
+8,0.27,ok,1,
+9,0.30,frame_dropped,0,skip every 5th
+10,0.33,ok,3,
+11,0.37,ok,2,
+12,0.40,ok,5,
+13,0.43,ok,2,
+14,0.47,frame_dropped,0,skip every 5th
+15,0.50,ok,3,

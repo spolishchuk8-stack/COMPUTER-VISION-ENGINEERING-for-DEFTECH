@@ -1,0 +1,5 @@
+window,n_frames,p50_ms,p95_ms,peak_gpu_MB,runtime,device
+w1,32,10.17,11.88,29.2,pytorch_ultralytics,Tesla_T4
+w2,32,10.4,12.1,29.2,pytorch_ultralytics,Tesla_T4
+w3,32,10.2,12.0,29.5,pytorch_ultralytics,Tesla_T4
+source,package_09_latency_table + repeat protocol Theme12
