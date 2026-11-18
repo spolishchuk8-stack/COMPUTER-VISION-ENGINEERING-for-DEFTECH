@@ -1,0 +1,12 @@
+pair_id,kind,expect_change,inliers,rejected_align,residual_mean,n_events
+static_0_1,static,False,1424,False,0.96,5
+static_5_6,static,False,1432,False,1.28,7
+static_10_11,static,False,1404,False,1.43,9
+static_15_16,static,False,1429,False,1.51,9
+motion_0_8,motion,True,1539,False,5.65,12
+motion_4_12,motion,True,1505,False,5.48,9
+motion_8_16,motion,True,1503,False,6.38,8
+motion_10_20,motion,True,1390,False,7.31,9
+synth_bright_p40,synth_light,False,1689,False,38.41,0
+synth_bright_m40,synth_light,False,914,False,35.16,0
+synth_gain_1p2,synth_light,False,1669,False,21.17,0
